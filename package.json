@@ -1,0 +1,54 @@
+{
+    "name": "@neoskop/scaffold",
+    "version": "0.1.0",
+    "description": "Install and update project scaffolds from a git repository — every file 3-way merged, so local changes survive.",
+    "license": "MIT",
+    "type": "module",
+    "main": "dist/index.js",
+    "typings": "dist/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/neoskop/security-guidelines.git",
+        "directory": "configs/scaffold"
+    },
+    "homepage": "https://github.com/neoskop/security-guidelines/tree/main/configs/scaffold#readme",
+    "bugs": {
+        "url": "https://github.com/neoskop/security-guidelines/issues"
+    },
+    "keywords": [
+        "scaffold",
+        "template",
+        "boilerplate",
+        "generator",
+        "three-way-merge",
+        "git",
+        "cli",
+        "security",
+        "neoskop"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "bin": {
+        "neoskop-scaffold": "./bin/bin.mjs"
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "typecheck": "tsc -p tsconfig.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "prepack": "pnpm run build"
+    },
+    "devDependencies": {
+        "@types/node": "26.1.2",
+        "typescript": "7.0.2",
+        "vitest": "4.1.10"
+    }
+}
