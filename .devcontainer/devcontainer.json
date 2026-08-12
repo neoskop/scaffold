@@ -1,0 +1,52 @@
+{
+    "name": "DevContainer",
+    "dockerComposeFile": "docker-compose.yaml",
+    "service": "dev",
+    "workspaceFolder": "${localWorkspaceFolder}",
+
+    "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/initialize.sh\" \"${localWorkspaceFolder}\"",
+
+    "remoteUser": "node",
+    "updateRemoteUserUID": true,
+
+    "containerEnv": {
+        "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+        "DEVCONTAINER": "true",
+        "HTTP_PROXY": "http://proxy:3128",
+        "HTTPS_PROXY": "http://proxy:3128",
+        "NO_PROXY": "localhost,127.0.0.1,proxy,mcp-search",
+        "http_proxy": "http://proxy:3128",
+        "https_proxy": "http://proxy:3128",
+        "no_proxy": "localhost,127.0.0.1,proxy,mcp-search",
+        "NODE_USE_ENV_PROXY": "1",
+
+        // Neutralize any inherited Git credential helper (e.g. from the host)
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "credential.helper",
+        "GIT_CONFIG_VALUE_0": "",
+
+        // Neutralize any inherited SSH agent socket
+        "SSH_AUTH_SOCK": "",
+
+        "CODEGRAPH_TELEMETRY": "0"
+    },
+
+    "remoteEnv": {
+        // Neutralize any inherited SSH agent socket
+        "SSH_AUTH_SOCK": ""
+    },
+
+    "postCreateCommand": "bash \"${localWorkspaceFolder}/.devcontainer/postCreate.sh\"",
+
+    // Project-wide extensions, installed automatically on (re)build.
+    // Should be in sync with the .vscode/extensions.json recommendations.
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // EXTENSIONS-START
+                // EXTENSIONS-END
+            ]
+        }
+    }
+}

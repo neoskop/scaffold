@@ -1,0 +1,21 @@
+# Minimal SearXNG config for the devcontainer research sidecar.
+#
+# This instance is ONLY reachable from the mcp-search container (they share the
+# `egress` network); the `dev` container has no route to it. It exists so web research
+# doesn't need an external search API (no API key, no account) and doesn't punch holes
+# into the proxy allowlist.
+
+use_default_settings: true
+
+server:
+  # secret_key is injected via the SEARXNG_SECRET env var (docker-compose.yml, value
+  # generated into .devcontainer/.env by initialize.sh). Only used for internal HMAC
+  # signatures — this instance is never exposed publicly.
+  # Bot-detection limiter off: the only client is the local MCP sidecar.
+  limiter: false
+
+search:
+  # mcp-searxng talks to the JSON API; `json` is not enabled by default.
+  formats:
+    - html
+    - json

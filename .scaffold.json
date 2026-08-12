@@ -1,0 +1,12 @@
+{
+    "scaffolds": {
+        "devcontainer": {
+            "repo": "neoskop/devcontainer",
+            "ref": {
+                "kind": "default",
+                "value": ""
+            },
+            "commit": "91d641ccbaec15c75ed16477b22c2eb679de3f30"
+        }
+    }
+}

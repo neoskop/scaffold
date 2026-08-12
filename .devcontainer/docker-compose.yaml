@@ -1,0 +1,104 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+        LOCAL_WORKSPACE_FOLDER: ${LOCAL_WORKSPACE_FOLDER}
+
+    # Enforce IPv4-only networking inside the container.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+      net.ipv6.conf.lo.disable_ipv6: 1
+
+    # Only the repository is mounted. On Linux/macOS we bind it to the same absolute path
+    # as on the host so pnpm resolves the same storeDir in node_modules/.modules.yaml.
+    #
+    # The ro submounts are CONTAINMENT, not tidiness: everything that executes on the
+    # HOST or configures this container lives under these paths. Read-only means the
+    # agent can know the whole setup without being able to change it (Kerckhoffs).
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}:${LOCAL_WORKSPACE_FOLDER}:cached
+      - ${LOCAL_WORKSPACE_FOLDER}/.devcontainer:${LOCAL_WORKSPACE_FOLDER}/.devcontainer:ro
+      - ${LOCAL_WORKSPACE_FOLDER}/.husky:${LOCAL_WORKSPACE_FOLDER}/.husky:ro
+      - ${LOCAL_WORKSPACE_FOLDER}/.git/config:${LOCAL_WORKSPACE_FOLDER}/.git/config:ro
+      - ${LOCAL_WORKSPACE_FOLDER}/.git/hooks:${LOCAL_WORKSPACE_FOLDER}/.git/hooks:ro
+      - ${LOCAL_WORKSPACE_FOLDER}/.pnpmfile.mjs:${LOCAL_WORKSPACE_FOLDER}/.pnpmfile.mjs:ro
+      - codegraph-data:${LOCAL_WORKSPACE_FOLDER}/.codegraph
+      - vscode-extensions:/home/node/.vscode-server/extensions
+      - claude-config:/home/node/.claude
+
+    # Keep the container alive; the devcontainer attaches to it.
+    command: sleep infinity
+
+    # NOTE: only the internal `agent` network — no `egress`, so no direct internet route.
+    networks:
+      - agent
+
+    depends_on:
+      - proxy
+      - mcp-search
+
+  # Egress domain filter. Holds the only general-purpose route to the internet; forwards
+  # exclusively to the allowlist in ./proxy/allowlist.txt.
+  proxy:
+    image: ubuntu/squid:6.6-24.04_edge@sha256:8a3baed477e2c282ab8aa5edad442f69873246964f225c5c2ae8364b6610963c
+    restart: unless-stopped
+    # Same command as the image default, but first make the container's stdout/stderr
+    # writable for the unprivileged `proxy` user Squid drops to — squid.conf logs
+    # access/cache straight to them so `docker compose logs proxy` shows every decision.
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "chmod a+w /dev/stdout /dev/stderr && exec entrypoint.sh -f /etc/squid/squid.conf -NYC",
+      ]
+    volumes:
+      - ./proxy/squid.conf:/etc/squid/squid.conf:ro
+      - ./proxy/allowlist.txt:/etc/squid/allowlist.txt:ro
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    networks:
+      - agent # reachable by dev (HTTP(S)_PROXY=http://proxy:3128)
+      - egress # has the actual internet route
+
+  mcp-search:
+    image: isokoliuk/mcp-searxng:1.14.0@sha256:7e7601e5981132ed6d199e259b0a7d4645b64c37479dbb9d4c83d1db1b052e43
+    restart: unless-stopped
+    environment:
+      SEARXNG_URL: http://searxng:8080
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: "3000"
+    networks:
+      - agent
+      - egress
+    depends_on:
+      - searxng
+
+  searxng:
+    image: searxng/searxng:2026.7.22-ef8f6470e@sha256:854f239d5c181db9c4282cd0ffc1737a61232dd6ad0ea964028b96df17d7758a
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?run .devcontainer/initialize.sh to generate .env}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      - egress
+
+volumes:
+  vscode-extensions:
+  claude-config:
+  codegraph-data:
+
+networks:
+  # Internal-only: Docker creates no gateway, so members have no route to the internet.
+  agent:
+    internal: true
+    enable_ipv6: false
+  # Normal bridge with internet access — only proxy, mcp-search and searxng are attached.
+  egress:
+    enable_ipv6: false

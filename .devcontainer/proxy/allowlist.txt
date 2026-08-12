@@ -1,0 +1,43 @@
+# Egress domain allowlist (squid dstdomain format).
+# Leading dot = apex + all subdomains. No dot = exactly that host.
+#
+# Keep this list SMALL and infrastructure-only. Web research does NOT belong here —
+# that's what the mcp-search sidecar is for. When something legitimate is blocked,
+# `docker compose logs proxy | grep DENIED` tells you the exact host to add.
+
+# npm registry (package metadata + tarballs)
+registry.npmjs.org
+# Node headers/downloads (node-gyp native builds, corepack fallbacks)
+nodejs.org
+.schemastore.org
+biomejs.dev
+
+# Debian packages (apt: deb.debian.org, security.debian.org)
+.debian.org
+
+# GitHub (github.com, api., codeload.) + content hosts (raw., objects., copilot-*.)
+.github.com
+.githubusercontent.com
+
+# GitHub Copilot / Copilot Chat (api. + latency-sensitive proxy.* completion hosts)
+.githubcopilot.com
+default.exp-tas.com
+
+# Expo services
+.expo.dev
+exp.host
+
+# Remote MCP servers (Figma)
+.figma.com
+
+
+# Anthropic / Claude Code control plane
+.anthropic.com
+.claude.ai
+.claude.com
+.statsig.com
+
+# VS Code Server: marketplace + extension downloads + updates
+marketplace.visualstudio.com
+vscode.blob.core.windows.net
+update.code.visualstudio.com
