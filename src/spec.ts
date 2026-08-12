@@ -143,18 +143,18 @@ function parseLocal(input: string, cwd: string): Result<RepoSpec, string> {
             return Err(`"${head}" starts with "~", which only a shell expands. Write the path out in full.`);
         }
 
-        const absolute = head.startsWith('file://')
-            ? fileURLToPath(head)
+        const repo = head.startsWith('file://')
+            ? relative(cwd, fileURLToPath(head))
             : isAbsolute(head)
               ? head
-              : resolve(cwd, head);
+              : relative(cwd, head) || '.';
 
-        if (!existsSync(absolute)) return Err(`${absolute} does not exist.`);
-
+        if (!existsSync(resolve(cwd, repo))) return Err(`${repo} does not exist.`);
+        
         return Ok({
-            repo: absolute,
-            url: pathToFileURL(absolute).href,
-            name: repoName(absolute.replace(/[/\\]+$/, '')),
+            repo,
+            url: pathToFileURL(repo).href,
+            name: repoName(resolve(cwd, repo).replace(/[/\\]+$/, '')),
             ref,
             local: true,
         });
