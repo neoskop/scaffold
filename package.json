@@ -27,7 +27,7 @@
         "access": "public"
     },
     "bin": {
-        "neoskop-scaffold": "./bin/bin.mjs"
+        "scaffold": "bin/bin.mjs"
     },
     "files": [
         "dist",
