@@ -11,6 +11,7 @@ registry.npmjs.org
 nodejs.org
 .schemastore.org
 biomejs.dev
+docs.renovatebot.com
 
 # Debian packages (apt: deb.debian.org, security.debian.org)
 .debian.org
