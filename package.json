@@ -1,6 +1,6 @@
 {
     "name": "@neoskop/scaffold",
-    "version": "0.1.0",
+    "version": "0.0.0",
     "description": "Install and update project scaffolds from a git repository — every file 3-way merged, so local changes survive.",
     "license": "MIT",
     "type": "module",
@@ -44,13 +44,13 @@
         "test:watch": "vitest",
         "preversion": "pnpm test",
         "postversion": "git push --follow-tags origin HEAD",
-        "release:patch": "pnpm version patch",
-        "release:minor": "pnpm version minor",
-        "release:major": "pnpm version major",
-        "release:next": "pnpm version prerelease --preid next",
-        "release:premajor": "pnpm version premajor --preid next",
-        "release:preminor": "pnpm version preminor --preid next",
-        "release:prepatch": "pnpm version prepatch --preid next",
+        "release:patch": "pnpm version patch --message 'chore: release v%s'",
+        "release:minor": "pnpm version minor --message 'chore: release v%s'",
+        "release:major": "pnpm version major --message 'chore: release v%s'",
+        "release:next": "pnpm version prerelease --preid next --message 'chore: release v%s'",
+        "release:premajor": "pnpm version premajor --preid next --message 'chore: release v%s'",
+        "release:preminor": "pnpm version preminor --preid next --message 'chore: release v%s'",
+        "release:prepatch": "pnpm version prepatch --preid next --message 'chore: release v%s'",
         "prepack": "pnpm run build"
     },
     "devDependencies": {
