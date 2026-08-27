@@ -1,5 +1,5 @@
 import { statSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { baselineTemplate, cleanupScratch, createRepo, snapshot, templateRepo } from './helpers.js';
@@ -28,10 +28,14 @@ describe('init', () => {
 
         const entry = repo.state().scaffolds['template-repo'];
         expect(entry).toEqual({
-            repo: fixture.root,
+            // Relative even though a file:// URL was typed: .scaffold.json is committed, so an
+            // absolute path in it would name one developer's disk. See the round-trip below.
+            repo: relative(repo.root, fixture.root),
             commit: fixture.head(),
             ref: { kind: 'default', value: '' },
         });
+        expect(isAbsolute(entry?.repo ?? '')).toBe(false);
+        expect(resolve(repo.root, entry?.repo ?? '')).toBe(fixture.root);
     });
 
     it('takes the executable bit from the template', async () => {

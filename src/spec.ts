@@ -11,7 +11,7 @@
 // execution by git itself. Both are refused here rather than escaped later.
 
 import { existsSync } from 'node:fs';
-import { isAbsolute, resolve, relative } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { Err, Ok, type Result } from './utils/Result.js';
@@ -143,22 +143,41 @@ function parseLocal(input: string, cwd: string): Result<RepoSpec, string> {
             return Err(`"${head}" starts with "~", which only a shell expands. Write the path out in full.`);
         }
 
-        const repo = head.startsWith('file://')
-            ? relative(cwd, fileURLToPath(head))
-            : isAbsolute(head)
-              ? head
-              : relative(cwd, head) || '.';
+        // Resolved against `cwd` — the target repository — and not against `process.cwd()`, which
+        // is somewhere else entirely under `--dir`. Both `path.relative` and `pathToFileURL`
+        // anchor a relative path to `process.cwd()`, so neither may be handed the typed one.
+        const absolute = head.startsWith('file://') ? fileURLToPath(head) : resolve(cwd, head);
 
-        if (!existsSync(resolve(cwd, repo))) return Err(`${repo} does not exist.`);
-        
+        if (!existsSync(absolute)) return Err(`${head} does not exist.`);
+
         return Ok({
-            repo,
-            url: pathToFileURL(repo).href,
-            name: repoName(resolve(cwd, repo).replace(/[/\\]+$/, '')),
+            repo: localIdentity(cwd, absolute),
+            url: pathToFileURL(absolute).href,
+            name: repoName(absolute.replace(/[/\\]+$/, '')),
             ref,
             local: true,
         });
     });
+}
+
+/**
+ * How a local repository is recorded: relative to the target repository, so that a project which
+ * scaffolds itself, or a template checked out beside the project that uses it, resolves to the
+ * same pair of directories on every machine — an absolute path in a committed `.scaffold.json`
+ * only ever names one developer's disk.
+ *
+ * Always `.`-prefixed and always with `/` separators. The prefix is what tells the recorded path
+ * from an `org/repo` shorthand when {@link specFromState} reads it back, since `templates/tpl` is
+ * a legal spelling of both; the separators keep a state file written on Windows readable on a
+ * posix checkout, which is the whole point of recording it relative.
+ */
+function localIdentity(cwd: string, absolute: string): string {
+    const path = relative(cwd, absolute);
+    if (path === '') return '.';
+    // Different Windows drives: there is no path from one to the other to record.
+    if (isAbsolute(path)) return absolute;
+    const posix = path.split(sep).join('/');
+    return posix.startsWith('.') ? posix : `./${posix}`;
 }
 
 function parseUrl(input: string): Result<RepoSpec, string> {
@@ -276,10 +295,14 @@ export function withRef(spec: RepoSpec, ref: Ref): RepoSpec {
 /**
  * Rebuild a spec from what a state entry recorded, without re-parsing user syntax — the
  * identity was already canonical when it was written.
+ *
+ * A local path is resolved against `cwd`, the target repository: that is what {@link localIdentity}
+ * recorded it relative to. Older state files hold an absolute path, which `resolve` passes through
+ * unchanged, so both spellings keep working.
  */
 export function specFromState(repo: string, ref: Ref, cwd: string): RepoSpec {
     if (isAbsolute(repo) || repo.startsWith('.')) {
-        const absolute = isAbsolute(repo) ? repo : relative(cwd, repo);
+        const absolute = resolve(cwd, repo);
         return { repo, url: pathToFileURL(absolute).href, name: repoName(absolute), ref, local: true };
     }
     if (URL_FORM.test(repo)) {

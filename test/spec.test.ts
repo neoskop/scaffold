@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { parseRefFlag, parseSpec, type RepoSpec, specFromState } from '../src/spec.js';
@@ -83,6 +84,32 @@ describe('local paths', () => {
         const spec = parseSpec('.', { cwd: dir }).unwrap();
         expect(spec.local).toBe(true);
         expect(spec.url.startsWith('file://')).toBe(true);
+    });
+
+    it('records a local repository relative to the project, whatever form was typed', () => {
+        // .scaffold.json is committed, so the identity in it may not name one developer's disk:
+        // a repository that scaffolds itself, or a template checked out beside the project that
+        // uses it, has to resolve the same way on the next machine.
+        const dir = scratchDir('spec');
+        const template = join(dir, 'templates/tpl');
+        mkdirSync(template, { recursive: true });
+
+        for (const input of [template, pathToFileURL(template).href, './templates/tpl']) {
+            const spec = parseSpec(input, { cwd: dir }).unwrap();
+            expect(spec.repo).toBe('./templates/tpl');
+            // The URL git is handed stays absolute, and against `cwd` rather than process.cwd().
+            expect(spec.url).toBe(pathToFileURL(template).href);
+        }
+    });
+
+    it('resolves that identity back against the project, not against the process cwd', () => {
+        const dir = scratchDir('spec');
+        const ref = { kind: 'default', value: '' } as const;
+        const restored = specFromState('./templates/tpl', ref, dir);
+
+        expect(restored.local).toBe(true);
+        expect(restored.name).toBe('tpl');
+        expect(restored.url).toBe(pathToFileURL(join(dir, 'templates/tpl')).href);
     });
 
     it('refuses a path that is not there', () => {
