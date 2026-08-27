@@ -293,7 +293,7 @@ Ist das Remote nicht erreichbar, meldet `--check` das als *unbekannt* und nicht 
 
 | Datei | Zuständig für |
 | --- | --- |
-| [src/bin.ts](src/bin.ts) | Entry-Point (Shebang), sonst nichts |
+| [bin/bin.mjs](bin/bin.mjs) | Entry-Point (Shebang), sonst nichts |
 | [src/cli.ts](src/cli.ts) | Argumente, Dispatch, Exit-Codes |
 | [src/spec.ts](src/spec.ts) | die Repo-Spec — und damit die Eingabevalidierung für alles, was ein argv erreicht |
 | [src/git.ts](src/git.ts) | Refs auflösen, Commits holen, Cache |
@@ -305,9 +305,9 @@ Ist das Remote nicht erreichbar, meldet `--check` das als *unbekannt* und nicht 
 | [src/env.ts](src/env.ts) | was die Commands außerhalb des Zielprojekts anfassen — injizierbar, damit Tests hermetisch bleiben |
 
 ```bash
-pnpm --filter @neoskop/scaffold test        # vitest run
-pnpm --filter @neoskop/scaffold typecheck   # tsc --noEmit
-pnpm --filter @neoskop/scaffold build       # -> dist/
+pnpm test        # vitest run
+pnpm typecheck   # tsc --noEmit
+pnpm build       # -> dist/
 ```
 
 Die Tests legen echte Git-Repos in Temp-Verzeichnissen an und klonen sie über `file://`, treiben
@@ -315,6 +315,48 @@ also denselben Code wie ein echter Lauf. `GIT_ALLOW_PROTOCOL=file` in
 [test/setup.ts](test/setup.ts) sorgt dafür, dass ein versehentlicher Netzzugriff sofort
 scheitert, statt hinauszugehen.
 
-Release: `version` in [package.json](package.json) anheben, mergen, Tag `scaffold-v<version>`
-pushen — [.github/workflows/publish-scaffold.yml](../../.github/workflows/publish-scaffold.yml)
-publiziert nach npm.
+## Release
+
+```bash
+pnpm release:patch      # 0.1.0 -> 0.1.1
+pnpm release:minor      # 0.1.0 -> 0.2.0
+pnpm release:major      # 0.1.0 -> 1.0.0
+pnpm release:next       # 0.1.0 -> 0.1.1-next.0, danach -> 0.1.1-next.1
+```
+
+Dahinter steht `pnpm version <type>`, mehr nicht. Ein Lauf hebt `version` in
+[package.json](package.json) an, committet genau diese eine Datei mit der neuen Version als
+Commit-Message und setzt den annotierten Tag `v<version>`. Davor laufen über `preversion` die
+Tests — und damit der Build; danach schiebt `postversion` Branch und Tag zusammen mit
+`git push --follow-tags origin HEAD` nach `origin`. Für die Fälle, die `next` nicht ausdrückt,
+gibt es zusätzlich `release:premajor`, `release:preminor` und `release:prepatch`; eine exakte
+Version oder ein anderer `--preid` geht direkt über `pnpm version`.
+
+Der Tag ist es, der publiziert: [.github/workflows/publish.yml](.github/workflows/publish.yml)
+läuft auf `v*`, **prüft Tag gegen `package.json#version`**, verlangt, dass der Tag ein Vorfahre
+von `origin/main` ist, und veröffentlicht dann nach npm — Prereleases unter dem dist-tag `next`,
+alles andere unter `latest`. `latest` wird also nie von einem Prerelease bewegt, was für
+`pnpm dlx @neoskop/scaffold@latest` in fremden CIs zählt. Der Workflow bumpt und committet
+nichts: er findet die Version vor, die im Tag steht.
+
+Ein `--dry-run` gibt es hier nicht. `pnpm version <type> --dry-run` nimmt die Option zwar an,
+bumpt, committet und taggt aber trotzdem — sie greift nur im rekursiven Modus. Wer den Plan
+sehen will, rechnet ihn aus `version` in [package.json](package.json) selbst aus.
+
+Im Devcontainer gibt es weder DNS noch SSH-Agent. Bump, Commit und Tag entstehen dort trotzdem,
+nur `postversion` scheitert am Push; nachgeholt wird er vom Host mit
+`git push --follow-tags origin HEAD`.
+
+Kein `pnpm change`: pnpm 11.20 kennt zwar `pnpm change` — Change-Intents im Changesets-Format
+unter `.changeset/` — und `pnpm version -r`, das sie einlöst. Für dieses Repo trägt das nicht.
+Das Paket *ist* die Workspace-Root, und `pnpm version -r` bumpt es nicht (`0.1.0 → 0.1.0`),
+löst die Intents aber trotzdem im Ledger ein; in einem echten Workspace bricht derselbe Aufruf
+mit `Cannot read properties of undefined` ab. Dazu kommt, dass `-r` Commit und Tag
+grundsätzlich auslässt — der Tag, von dem `publish.yml` lebt, müsste also ohnehin von Hand
+entstehen. Ein einzelnes Paket braucht kein Changeset-Ledger; die Commit-Historie ist das
+Changelog.
+
+Die npm-Seite ist einmalig einzurichten: Trusted Publishing (OIDC) lässt sich erst für ein
+existierendes Paket konfigurieren, `0.1.0` muss also einmal von Hand veröffentlicht werden.
+Danach unter Package Settings `neoskop/scaffold` + `publish.yml` als Trusted Publisher
+eintragen; ein `NPM_TOKEN` braucht der Workflow dann nicht.

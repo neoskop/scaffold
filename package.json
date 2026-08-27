@@ -8,12 +8,11 @@
     "typings": "dist/index.d.ts",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/neoskop/security-guidelines.git",
-        "directory": "configs/scaffold"
+        "url": "git+https://github.com/neoskop/scaffold.git"
     },
-    "homepage": "https://github.com/neoskop/security-guidelines/tree/main/configs/scaffold#readme",
+    "homepage": "https://github.com/neoskop/scaffold#readme",
     "bugs": {
-        "url": "https://github.com/neoskop/security-guidelines/issues"
+        "url": "https://github.com/neoskop/scaffold/issues"
     },
     "keywords": [
         "scaffold",
@@ -45,6 +44,15 @@
         "typecheck": "tsc -p tsconfig.json",
         "test": "vitest run",
         "test:watch": "vitest",
+        "preversion": "pnpm test",
+        "postversion": "git push --follow-tags origin HEAD",
+        "release:patch": "pnpm version patch",
+        "release:minor": "pnpm version minor",
+        "release:major": "pnpm version major",
+        "release:next": "pnpm version prerelease --preid next",
+        "release:premajor": "pnpm version premajor --preid next",
+        "release:preminor": "pnpm version preminor --preid next",
+        "release:prepatch": "pnpm version prepatch --preid next",
         "prepack": "pnpm run build"
     },
     "devDependencies": {

@@ -1,0 +1,96 @@
+name: publish
+
+# The tag is the trigger and the source of truth. `pnpm release:*` (i.e. `pnpm version`) creates
+# it; nothing else should. Both patterns are needed because a prerelease carries a `-next.0` suffix.
+on:
+    push:
+        tags:
+            - 'v[0-9]+.[0-9]+.[0-9]+'
+            - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+# Never two publishes of the same tag at once, and never cancel one half-way through.
+concurrency:
+    group: publish-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # Both npm trusted publishing (OIDC, so no NPM_TOKEN) and the provenance attestation
+            # need to mint an OIDC token.
+            id-token: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # The ancestry check below needs real history, not a shallow clone.
+                  fetch-depth: 0
+
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: '24'
+                  registry-url: 'https://registry.npmjs.org'
+
+            - name: The tag must be the version
+              id: meta
+              run: |
+                  set -euo pipefail
+                  # node, not jq: it is the one interpreter this package already depends on. `-p`
+                  # evaluates as CommonJS regardless of "type": "module", so require() is fine here.
+                  version="$(node -p 'require("./package.json").version')"
+                  if [ "$GITHUB_REF_NAME" != "v${version}" ]; then
+                      echo "::error::tag ${GITHUB_REF_NAME} does not match package.json version ${version} (expected v${version})"
+                      exit 1
+                  fi
+                  # A prerelease must never move `latest`: `pnpm dlx @neoskop/scaffold@latest` is the
+                  # command the README hands to consumers' CI.
+                  case "$version" in
+                      *-*) dist_tag=next ;;
+                      *)   dist_tag=latest ;;
+                  esac
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  echo "dist_tag=${dist_tag}" >> "$GITHUB_OUTPUT"
+                  echo "publishing ${version} under the ${dist_tag} dist-tag"
+
+            - name: The tag must be on main
+              run: |
+                  set -euo pipefail
+                  git fetch --no-tags origin main
+                  if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+                      echo "::error::${GITHUB_REF_NAME} is not an ancestor of origin/main — refusing to publish an off-branch tag"
+                      exit 1
+                  fi
+
+            # Only the pnpm shim: `corepack enable` on its own also shims npm, and that shim refuses
+            # to run because packageManager names pnpm — which would break the publish step. Must
+            # come after setup-node, or its Node install replaces the shims.
+            - name: Enable pnpm from packageManager
+              run: corepack enable pnpm
+              env:
+                  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+
+            # Trusted publishing needs npm >= 11.5.1. Node 24 already ships a newer npm; pinning the
+            # major keeps this from silently regressing on an older runner image.
+            - name: Ensure npm supports trusted publishing
+              run: npm install --global npm@11
+
+            # CI=true is what lets .pnpmfile.mjs's devcontainer guard through.
+            - run: pnpm install --frozen-lockfile
+
+            - run: pnpm run typecheck
+
+            # Also the build: vitest's globalSetup (test/build.ts) compiles dist/ before the suite,
+            # and test/bin.test.ts drives the compiled binary that npm is about to publish.
+            - run: pnpm test
+
+            # The tarball contents in the log, before anything is irreversible. dist/ already exists
+            # from the test run, so this needs no rebuild.
+            - name: Show what would be published
+              run: npm pack --dry-run --ignore-scripts
+
+            - name: Publish to npm
+              run: npm publish --provenance --access public --tag '${{ steps.meta.outputs.dist_tag }}'
