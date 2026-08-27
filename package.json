@@ -21,9 +21,7 @@
         "generator",
         "three-way-merge",
         "git",
-        "cli",
-        "security",
-        "neoskop"
+        "cli"
     ],
     "publishConfig": {
         "access": "public"
