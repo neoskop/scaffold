@@ -221,7 +221,7 @@ function checkPath(path: string, input: string): Result<void, string> {
     for (const segment of segments) {
         if (!SEGMENT.test(segment)) return Err(`"${segment}" is not a usable path segment (in "${input}").`);
     }
-    return Ok<void>(undefined);
+    return Ok();
 }
 
 /**

@@ -48,7 +48,9 @@ export class ResultImpl<T, E> implements ResultBase<T, E> {
         this.#error = error;
     }
 
-    static Ok<T>(value: T) {
+    static Ok<T>(value: T): OkResult<T, never>;
+    static Ok(): OkResult<void, never>;
+    static Ok<T>(value?: T) {
         return new ResultImpl('ok', value) as unknown  as OkResult<T, never>;
     }
 

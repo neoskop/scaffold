@@ -38,5 +38,5 @@ export function checkRepo(root: string): Result<void, string> {
                 '  result or undo it. Run `git init` first.'
         );
     }
-    return Ok<void>(undefined);
+    return Ok();
 }

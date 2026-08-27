@@ -186,5 +186,5 @@ export function checkName(name: string): Result<void, string> {
     if (!NAME.test(name)) {
         return Err(`"${name}" is not a usable scaffold name — letters, digits and . _ - only.`);
     }
-    return Ok<void>(undefined);
+    return Ok();
 }
