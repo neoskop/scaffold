@@ -30,9 +30,15 @@ jobs:
                   # The ancestry check below needs real history, not a shallow clone.
                   fetch-depth: 0
 
+            - name: Install pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  cache: true
+
             - uses: actions/setup-node@v5
               with:
-                  node-version: '24'
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
                   registry-url: 'https://registry.npmjs.org'
 
             - name: The tag must be the version
@@ -64,11 +70,6 @@ jobs:
                       echo "::error::${GITHUB_REF_NAME} is not an ancestor of origin/main — refusing to publish an off-branch tag"
                       exit 1
                   fi
-
-            - name: Enable pnpm from packageManager
-              run: corepack enable pnpm
-              env:
-                  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
 
             - run: pnpm install --frozen-lockfile
 
