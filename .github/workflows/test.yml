@@ -1,0 +1,46 @@
+name: Test
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+# A newer commit on the same branch makes the older run's answer irrelevant, so stop paying for
+# it. Keyed by ref, which keeps the main runs and each PR independent of one another.
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    unit:
+        runs-on: ubuntu-latest
+        strategy:
+            # One version failing is a fact about that version; the others still have to report.
+            fail-fast: false
+            matrix:
+                # The floor from package.json "engines", the current LTS, and the version in
+                # .nvmrc that publish.yml builds the released artifact with.
+                node-version: ['22', '24']
+        name: Unit Test (Node ${{ matrix.node-version }})
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  cache: true
+
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: 'pnpm'
+
+            - run: pnpm install --frozen-lockfile
+
+            - run: pnpm run typecheck
+
+            - run: pnpm test
