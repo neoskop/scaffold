@@ -1,6 +1,6 @@
 {
     "name": "@neoskop/scaffold",
-    "version": "0.0.2-next.0",
+    "version": "0.0.2",
     "description": "Install and update project scaffolds from a git repository — every file 3-way merged, so local changes survive.",
     "license": "MIT",
     "type": "module",
