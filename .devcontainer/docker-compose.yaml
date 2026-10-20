@@ -67,7 +67,7 @@ services:
       - egress # has the actual internet route
 
   mcp-search:
-    image: isokoliuk/mcp-searxng:2.5.0@sha256:13939bb5076f2e93f7dbef41e6623592e4c70f3f8efac8951599ad1e80b4606e
+    image: isokoliuk/mcp-searxng:2.7.0@sha256:c018ec75ab6613d3bddd75add274049bbad9dc178fc6c4c35817db227398c100
     restart: unless-stopped
     environment:
       SEARXNG_URL: http://searxng:8080
